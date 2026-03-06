@@ -205,7 +205,7 @@ const FooterBar = () => {
               rel='noopener noreferrer'
               className='!text-semi-color-primary font-medium'
             >
-              New API
+              Xingrun Times Technologies Co., Ltd.
             </a>
           </div>
         </div>
@@ -221,23 +221,10 @@ const FooterBar = () => {
   return (
     <div className='w-full'>
       {footer ? (
-        <div className='relative'>
-          <div
+        <div
             className='custom-footer'
             dangerouslySetInnerHTML={{ __html: footer }}
           ></div>
-          <div className='absolute bottom-2 right-4 text-xs !text-semi-color-text-2 opacity-70'>
-            <span>{t('设计与开发由')} </span>
-            <a
-              href='https://github.com/QuantumNous/new-api'
-              target='_blank'
-              rel='noopener noreferrer'
-              className='!text-semi-color-primary font-medium'
-            >
-              New API
-            </a>
-          </div>
-        </div>
       ) : (
         customFooter
       )}

@@ -61,6 +61,20 @@ const UserArea = ({
             <Dropdown.Menu className='!bg-semi-color-bg-overlay !border-semi-color-border !shadow-lg !rounded-lg dark:!bg-gray-700 dark:!border-gray-600'>
               <Dropdown.Item
                 onClick={() => {
+                  navigate('/console');
+                }}
+                className='!px-3 !py-1.5 !text-sm !text-semi-color-text-0 hover:!bg-semi-color-fill-1 dark:!text-gray-200 dark:hover:!bg-blue-500 dark:hover:!text-white'
+              >
+                <div className='flex items-center gap-2'>
+                  <IconKey
+                    size='small'
+                    className='text-gray-500 dark:text-gray-400'
+                  />
+                  <span>{t('控制台')}</span>
+                </div>
+              </Dropdown.Item>
+              <Dropdown.Item
+                onClick={() => {
                   navigate('/console/personal');
                 }}
                 className='!px-3 !py-1.5 !text-sm !text-semi-color-text-0 hover:!bg-semi-color-fill-1 dark:!text-gray-200 dark:hover:!bg-blue-500 dark:hover:!text-white'

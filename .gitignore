@@ -27,3 +27,6 @@ data/
 .gomodcache/
 .gocache-temp
 .gopath
+dist/linux_amd64/nodekey-ai-amd64
+nodekey
+web/dist.zip

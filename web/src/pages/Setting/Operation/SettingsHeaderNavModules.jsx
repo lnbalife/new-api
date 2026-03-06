@@ -42,6 +42,7 @@ export default function SettingsHeaderNavModules(props) {
   const [headerNavModules, setHeaderNavModules] = useState({
     home: true,
     console: true,
+    playground: true,
     pricing: {
       enabled: true,
       requireAuth: false, // 默认不需要登录鉴权

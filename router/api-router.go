@@ -193,6 +193,27 @@ func SetApiRouter(router *gin.Engine) {
 			commissionAdminRoute.PUT("/withdrawal_setting", controller.UpdateWithdrawalSetting)
 		}
 
+		// Agent management (admin)
+		agentRoute := apiRouter.Group("/agent")
+		agentRoute.Use(middleware.AdminAuth())
+		{
+			agentRoute.GET("/", controller.GetAgents)
+			agentRoute.POST("/", controller.CreateAgent)
+			agentRoute.GET("/:id", controller.GetAgentDetail)
+			agentRoute.PUT("/:id", controller.UpdateAgent)
+			agentRoute.PATCH("/:id/status", controller.ToggleAgentStatus)
+			agentRoute.DELETE("/:id", controller.DeleteAgent)
+		}
+
+		// Region (province/city/district) - requires admin auth
+		regionRoute := apiRouter.Group("/region")
+		regionRoute.Use(middleware.AdminAuth())
+		{
+			regionRoute.GET("/provinces", controller.GetProvinces)
+			regionRoute.GET("/cities/:provinceId", controller.GetCitiesByProvince)
+			regionRoute.GET("/districts/:cityId", controller.GetDistrictsByCity)
+		}
+
 		// Subscription payment callbacks (no auth)
 		apiRouter.POST("/subscription/epay/notify", controller.SubscriptionEpayNotify)
 		apiRouter.GET("/subscription/epay/notify", controller.SubscriptionEpayNotify)

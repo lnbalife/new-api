@@ -52,6 +52,7 @@ import SetupCheck from './components/layout/SetupCheck';
 import Wallet from './pages/Wallet';
 import IdentityLevel from './pages/IdentityLevel';
 import WithdrawalAudit from './pages/WithdrawalAudit';
+import AgentManagement from './pages/Agent';
 
 const Home = lazy(() => import('./pages/Home'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -187,6 +188,14 @@ function App() {
           element={
             <AdminRoute>
               <WithdrawalAudit />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path='/console/agent'
+          element={
+            <AdminRoute>
+              <AgentManagement />
             </AdminRoute>
           }
         />

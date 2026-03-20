@@ -53,6 +53,7 @@ export const DEFAULT_ADMIN_CONFIG = {
     redemption: true,
     user: true,
     identityLevel: true,
+    agent: true,
     withdrawalAudit: true,
     subscription: true,
     setting: true,

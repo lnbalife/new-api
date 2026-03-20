@@ -51,6 +51,7 @@ const routerMap = {
   wallet: '/console/wallet',
   identityLevel: '/console/identity-level',
   withdrawalAudit: '/console/withdrawal-audit',
+  agent: '/console/agent',
 };
 
 const SiderBar = ({ onNavigate = () => {} }) => {
@@ -194,6 +195,12 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         text: t('身份等级管理'),
         itemKey: 'identityLevel',
         to: '/identity-level',
+        className: isAdmin() ? '' : 'tableHiddle',
+      },
+      {
+        text: t('代理商管理'),
+        itemKey: 'agent',
+        to: '/agent',
         className: isAdmin() ? '' : 'tableHiddle',
       },
       {

@@ -27,9 +27,9 @@ import {
   Form,
   Tag,
   Typography,
-  Popconfirm,
+  Banner,
 } from '@douyinfe/semi-ui';
-import { Plus, Edit, Trash2, Star } from 'lucide-react';
+import { Edit, Star, Info } from 'lucide-react';
 import { API, showError, showSuccess } from '../../helpers';
 import { useTranslation } from 'react-i18next';
 
@@ -62,41 +62,21 @@ const IdentityLevelManagement = () => {
     }
   };
 
-  const handleAdd = () => {
-    setEditingLevel(null);
-    setModalVisible(true);
-  };
-
   const handleEdit = (level) => {
     // 将小数转换为百分比显示
     const levelForEdit = {
       ...level,
-      commission_rate: level.commission_rate * 100,
+      commission_rate: parseFloat((level.commission_rate * 100).toFixed(2)),
     };
     setEditingLevel(levelForEdit);
     setModalVisible(true);
   };
 
-  const handleDelete = async (id) => {
-    try {
-      const res = await API.delete(`/api/commission/admin/identity_levels/${id}`);
-      const { success, message } = res.data;
-      if (success) {
-        showSuccess(t('删除成功'));
-        loadLevels();
-      } else {
-        showError(message);
-      }
-    } catch (error) {
-      showError(error.response?.data?.message || t('删除失败'));
-    }
-  };
-
   const handleSubmit = async () => {
     const values = formApi.current.getValues();
 
-    if (!values.name || values.commission_rate === undefined) {
-      showError(t('请填写完整信息'));
+    if (values.commission_rate === undefined || values.commission_rate === null) {
+      showError(t('请输入佣金比例'));
       return;
     }
 
@@ -107,29 +87,34 @@ const IdentityLevelManagement = () => {
 
     // 将百分比转换为小数
     const submitData = {
-      ...values,
+      ...editingLevel,
       commission_rate: values.commission_rate / 100,
+      description: values.description,
     };
 
     try {
-      let res;
-      if (editingLevel) {
-        res = await API.put(`/api/commission/admin/identity_levels/${editingLevel.id}`, submitData);
-      } else {
-        res = await API.post('/api/commission/admin/identity_levels', submitData);
-      }
-
+      const res = await API.put(
+        `/api/commission/admin/identity_levels/${editingLevel.id}`,
+        submitData,
+      );
       const { success, message } = res.data;
       if (success) {
-        showSuccess(editingLevel ? t('更新成功') : t('创建成功'));
+        showSuccess(t('更新成功'));
         setModalVisible(false);
         loadLevels();
       } else {
         showError(message);
       }
     } catch (error) {
-      showError(editingLevel ? t('更新失败') : t('创建失败'));
+      showError(t('更新失败'));
     }
+  };
+
+  const levelTagColor = (id) => {
+    if (id === 1) return 'blue';
+    if (id === 2) return 'orange';
+    if (id === 3) return 'purple';
+    return 'grey';
   };
 
   const columns = [
@@ -145,13 +130,19 @@ const IdentityLevelManagement = () => {
       key: 'name',
       render: (text, record) => (
         <Space>
-          <Text strong>{text}</Text>
-          {record.is_default && <Tag color='gold' icon={<Star size={12} />}>{t('默认')}</Tag>}
+          <Tag color={levelTagColor(record.id)} size='large'>
+            {text}
+          </Tag>
+          {record.is_default && (
+            <Tag color='gold' icon={<Star size={12} />}>
+              {t('默认')}
+            </Tag>
+          )}
         </Space>
       ),
     },
     {
-      title: t('佣金比例'),
+      title: t('默认分佣比例'),
       dataIndex: 'commission_rate',
       key: 'commission_rate',
       render: (rate) => (
@@ -180,30 +171,13 @@ const IdentityLevelManagement = () => {
       title: t('操作'),
       key: 'action',
       render: (_, record) => (
-        <Space>
-          <Button
-            icon={<Edit size={16} />}
-            size='small'
-            onClick={() => handleEdit(record)}
-          >
-            {t('编辑')}
-          </Button>
-          {!record.is_default && (
-            <Popconfirm
-              title={t('确认删除')}
-              content={t('删除后无法恢复，确认删除吗？')}
-              onConfirm={() => handleDelete(record.id)}
-            >
-              <Button
-                icon={<Trash2 size={16} />}
-                size='small'
-                type='danger'
-              >
-                {t('删除')}
-              </Button>
-            </Popconfirm>
-          )}
-        </Space>
+        <Button
+          icon={<Edit size={16} />}
+          size='small'
+          onClick={() => handleEdit(record)}
+        >
+          {t('编辑比例')}
+        </Button>
       ),
     },
   ];
@@ -211,19 +185,27 @@ const IdentityLevelManagement = () => {
   return (
     <div className='mt-[60px] px-2'>
       <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 16,
+          }}
+        >
           <Title heading={3} style={{ margin: 0 }}>
             {t('身份等级管理')}
           </Title>
-          <Button
-            theme='solid'
-            type='primary'
-            icon={<Plus />}
-            onClick={handleAdd}
-          >
-            {t('新增等级')}
-          </Button>
         </div>
+
+        <Banner
+          type='info'
+          icon={<Info size={16} />}
+          description={t(
+            '身份等级固定为三级：普通用户、区域代理、城市运营中心。此处只允许调整各等级的默认分佣比例。代理商的创建和身份绑定请前往"代理商管理"操作。',
+          )}
+          style={{ marginBottom: 20 }}
+        />
 
         <Table
           columns={columns}
@@ -236,7 +218,7 @@ const IdentityLevelManagement = () => {
       <Modal
         visible={modalVisible}
         onCancel={() => setModalVisible(false)}
-        title={editingLevel ? t('编辑身份等级') : t('新增身份等级')}
+        title={t('编辑身份等级')}
         footer={
           <Space>
             <Button onClick={() => setModalVisible(false)}>{t('取消')}</Button>
@@ -246,45 +228,41 @@ const IdentityLevelManagement = () => {
           </Space>
         }
       >
-        <Form
-          getFormApi={(api) => (formApi.current = api)}
-          initValues={editingLevel || { status: 1, is_default: false }}
-          labelPosition='left'
-          labelWidth={120}
-        >
-          <Form.Input
-            field='name'
-            label={t('等级名称')}
-            placeholder={t('请输入等级名称')}
-            rules={[{ required: true, message: t('请输入等级名称') }]}
-          />
-          <Form.InputNumber
-            field='commission_rate'
-            label={t('佣金比例')}
-            placeholder={t('请输入佣金比例')}
-            min={0}
-            max={100}
-            step={0.1}
-            precision={1}
-            suffix='%'
-            rules={[{ required: true, message: t('请输入佣金比例') }]}
-            extra={t('范围：0-100，例如5表示5%')}
-          />
-          <Form.TextArea
-            field='description'
-            label={t('等级说明')}
-            placeholder={t('请输入等级说明')}
-            maxCount={255}
-          />
-          <Form.Select
-            field='status'
-            label={t('状态')}
-            optionList={[
-              { label: t('启用'), value: 1 },
-              { label: t('禁用'), value: 0 },
-            ]}
-          />
-        </Form>
+        {editingLevel && (
+          <Form
+            getFormApi={(api) => (formApi.current = api)}
+            initValues={{
+              commission_rate: editingLevel.commission_rate,
+              description: editingLevel.description,
+            }}
+            labelPosition='left'
+            labelWidth={130}
+          >
+            <Form.Slot label={t('等级名称')}>
+              <Tag color={levelTagColor(editingLevel.id)} size='large'>
+                {editingLevel.name}
+              </Tag>
+            </Form.Slot>
+            <Form.InputNumber
+              field='commission_rate'
+              label={t('默认分佣比例')}
+              placeholder={t('请输入佣金比例')}
+              min={0}
+              max={100}
+              step={0.1}
+              precision={2}
+              suffix='%'
+              rules={[{ required: true, message: t('请输入佣金比例') }]}
+              extra={t('此为该身份等级的默认分佣比例，代理商也可单独设置自定义比例')}
+            />
+            <Form.TextArea
+              field='description'
+              label={t('等级说明')}
+              placeholder={t('请输入等级说明')}
+              maxCount={255}
+            />
+          </Form>
+        )}
       </Modal>
     </div>
   );

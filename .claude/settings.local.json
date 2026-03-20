@@ -19,7 +19,8 @@
       "Bash(mobile)",
       "Bash(call)",
       "Bash(smart)",
-      "Bash(find f:go_projectnodekey_ccwebnode_modules@douyinfesemi-iconslibcjsicons -name *hone* -o -name *obile*)"
+      "Bash(find f:go_projectnodekey_ccwebnode_modules@douyinfesemi-iconslibcjsicons -name *hone* -o -name *obile*)",
+      "Bash(grep -r \"province\\\\|Province\\\\|city\\\\|City\\\\|district\\\\|District\" model/ --include=*.go -l)"
     ]
   }
 }

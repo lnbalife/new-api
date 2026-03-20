@@ -272,6 +272,7 @@ func migrateDB() error {
 		&WithdrawalRecord{},
 		&UserKYC{},
 		&WithdrawalSetting{},
+		&Agent{},
 		&QuotaData{},
 		&Task{},
 		&Model{},

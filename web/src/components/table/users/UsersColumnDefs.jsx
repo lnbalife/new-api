@@ -194,6 +194,20 @@ const renderInviteInfo = (text, record, t) => {
 };
 
 /**
+ * Render identity level
+ */
+const renderIdentityLevel = (text, record, t) => {
+  if (!record.identity_level_name) {
+    return <Tag color='grey'>{t('未设置')}</Tag>;
+  }
+  return (
+    <Tag color='cyan' shape='circle'>
+      {record.identity_level_name}
+    </Tag>
+  );
+};
+
+/**
  * Render operations column
  */
 const renderOperations = (
@@ -209,6 +223,7 @@ const renderOperations = (
     showResetPasskeyModal,
     showResetTwoFAModal,
     showUserSubscriptionsModal,
+    showChangeIdentityModal,
     t,
   },
 ) => {
@@ -217,6 +232,14 @@ const renderOperations = (
   }
 
   const moreMenu = [
+    {
+      node: 'item',
+      name: t('修改身份等级'),
+      onClick: () => showChangeIdentityModal(record),
+    },
+    {
+      node: 'divider',
+    },
     {
       node: 'item',
       name: t('订阅管理'),
@@ -309,6 +332,7 @@ export const getUsersColumns = ({
   showResetPasskeyModal,
   showResetTwoFAModal,
   showUserSubscriptionsModal,
+  showChangeIdentityModal,
 }) => {
   return [
     {
@@ -346,6 +370,11 @@ export const getUsersColumns = ({
       },
     },
     {
+      title: t('身份等级'),
+      dataIndex: 'identity_level',
+      render: (text, record, index) => renderIdentityLevel(text, record, t),
+    },
+    {
       title: t('邀请信息'),
       dataIndex: 'invite',
       render: (text, record, index) => renderInviteInfo(text, record, t),
@@ -366,6 +395,7 @@ export const getUsersColumns = ({
           showResetPasskeyModal,
           showResetTwoFAModal,
           showUserSubscriptionsModal,
+          showChangeIdentityModal,
           t,
         }),
     },

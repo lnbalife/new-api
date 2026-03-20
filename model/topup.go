@@ -91,6 +91,13 @@ func Recharge(referenceId string, customerId string) (err error) {
 			return err
 		}
 
+		// 处理邀请佣金（新版本：按实际支付金额计算）
+		err = ProcessCommission(tx, topUp, topUp.Money)
+		if err != nil {
+			common.SysError("process commission failed: " + err.Error())
+			// 佣金处理失败不影响充值，只记录错误
+		}
+
 		return nil
 	})
 
@@ -250,6 +257,8 @@ func ManualCompleteTopUp(tradeNo string) error {
 	var quotaToAdd int
 	var payMoney float64
 
+	common.SysError("执行手动补单：开始")
+
 	err := DB.Transaction(func(tx *gorm.DB) error {
 		topUp := &TopUp{}
 		// 行级锁，避免并发补单
@@ -293,10 +302,17 @@ func ManualCompleteTopUp(tradeNo string) error {
 			return err
 		}
 
+		// 处理邀请佣金（新版本：按实际支付金额计算）
+		if commErr := ProcessCommission(tx, topUp, payMoney); commErr != nil {
+			common.SysError("process commission failed: " + commErr.Error())
+			// 佣金处理失败不影响充值，只记录错误
+		}
+
 		userId = topUp.UserId
 		payMoney = topUp.Money
 		return nil
 	})
+	common.SysError("执行手动补单：结束")
 
 	if err != nil {
 		return err
@@ -345,14 +361,13 @@ func RechargeCreem(referenceId string, customerEmail string, customerName string
 		}
 
 		// 如果有客户邮箱，尝试更新用户邮箱（仅当用户邮箱为空时）
-		if customerEmail != "" {
-			// 先检查用户当前邮箱是否为空
-			var user User
-			err = tx.Where("id = ?", topUp.UserId).First(&user).Error
-			if err != nil {
-				return err
-			}
+		var user User
+		err = tx.Where("id = ?", topUp.UserId).First(&user).Error
+		if err != nil {
+			return err
+		}
 
+		if customerEmail != "" {
 			// 如果用户邮箱为空，则更新为支付时使用的邮箱
 			if user.Email == "" {
 				updateFields["email"] = customerEmail
@@ -362,6 +377,12 @@ func RechargeCreem(referenceId string, customerEmail string, customerName string
 		err = tx.Model(&User{}).Where("id = ?", topUp.UserId).Updates(updateFields).Error
 		if err != nil {
 			return err
+		}
+
+		// 处理邀请佣金（新版本：按实际支付金额计算）
+		if commErr := ProcessCommission(tx, topUp, topUp.Money); commErr != nil {
+			common.SysError("process commission failed: " + commErr.Error())
+			// 佣金处理失败不影响充值，只记录错误
 		}
 
 		return nil

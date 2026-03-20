@@ -59,6 +59,7 @@ import {
   IconMail,
   IconLock,
   IconKey,
+  IconPhone,
 } from '@douyinfe/semi-icons';
 import OIDCIcon from '../common/logo/OIDCIcon';
 import WeChatIcon from '../common/logo/WeChatIcon';
@@ -78,6 +79,9 @@ const LoginForm = () => {
   const [inputs, setInputs] = useState({
     username: '',
     password: '',
+    phone: '',
+    phone_password: '',
+    phone_sms_code: '',
     wechat_verification_code: '',
   });
   const { username, password } = inputs;
@@ -90,6 +94,11 @@ const LoginForm = () => {
   const [turnstileToken, setTurnstileToken] = useState('');
   const [showWeChatLoginModal, setShowWeChatLoginModal] = useState(false);
   const [showEmailLogin, setShowEmailLogin] = useState(false);
+  // loginMode: 'password' | 'phone_password' | 'phone_sms'
+  const [loginMode, setLoginMode] = useState('password');
+  const [smsCodeLoading, setSmsCodeLoading] = useState(false);
+  const [smsDisableButton, setSmsDisableButton] = useState(false);
+  const [smsCountdown, setSmsCountdown] = useState(60);
   const [wechatLoading, setWechatLoading] = useState(false);
   const [githubLoading, setGithubLoading] = useState(false);
   const [discordLoading, setDiscordLoading] = useState(false);
@@ -172,6 +181,47 @@ const LoginForm = () => {
     }
   }, []);
 
+  useEffect(() => {
+    let interval = null;
+    if (smsDisableButton && smsCountdown > 0) {
+      interval = setInterval(() => {
+        setSmsCountdown((c) => c - 1);
+      }, 1000);
+    } else if (smsCountdown === 0) {
+      setSmsDisableButton(false);
+      setSmsCountdown(60);
+    }
+    return () => clearInterval(interval);
+  }, [smsDisableButton, smsCountdown]);
+
+  const sendLoginSMSCode = async () => {
+    if (inputs.phone === '') {
+      showInfo('请先输入手机号');
+      return;
+    }
+    if (turnstileEnabled && turnstileToken === '') {
+      showInfo('请稍后几秒重试，Turnstile 正在检查用户环境！');
+      return;
+    }
+    setSmsCodeLoading(true);
+    try {
+      const res = await API.get(
+        `/api/sms_verification?phone=${encodeURIComponent(inputs.phone)}&turnstile=${turnstileToken}`,
+      );
+      const { success, message } = res.data;
+      if (success) {
+        showSuccess('短信验证码已发送，请注意查收！');
+        setSmsDisableButton(true);
+      } else {
+        showError(message);
+      }
+    } catch (error) {
+      showError('发送短信验证码失败，请重试');
+    } finally {
+      setSmsCodeLoading(false);
+    }
+  };
+
   const onWeChatLoginClicked = () => {
     if ((hasUserAgreement || hasPrivacyPolicy) && !agreedToTerms) {
       showInfo(t('请先阅读并同意用户协议和隐私政策'));
@@ -227,40 +277,93 @@ const LoginForm = () => {
     setSubmitted(true);
     setLoginLoading(true);
     try {
-      if (username && password) {
+      if (loginMode === 'phone_password') {
+        // 手机号 + 密码登录
+        if (!inputs.phone || !inputs.phone_password) {
+          showError('请输入手机号和密码！');
+          return;
+        }
         const res = await API.post(
-          `/api/user/login?turnstile=${turnstileToken}`,
-          {
-            username,
-            password,
-          },
+          `/api/user/login/phone?turnstile=${turnstileToken}`,
+          { phone: inputs.phone, password: inputs.phone_password },
         );
         const { success, message, data } = res.data;
         if (success) {
-          // 检查是否需要2FA验证
           if (data && data.require_2fa) {
             setShowTwoFA(true);
             setLoginLoading(false);
             return;
           }
-
           userDispatch({ type: 'login', payload: data });
           setUserData(data);
           updateAPI();
           showSuccess('登录成功！');
-          if (username === 'root' && password === '123456') {
-            Modal.error({
-              title: '您正在使用默认密码！',
-              content: '请立刻修改默认密码！',
-              centered: true,
-            });
+          navigate('/console');
+        } else {
+          showError(message);
+        }
+      } else if (loginMode === 'phone_sms') {
+        // 手机号 + 短信验证码登录
+        if (!inputs.phone || !inputs.phone_sms_code) {
+          showError('请输入手机号和短信验证码！');
+          return;
+        }
+        const res = await API.post(
+          `/api/user/login/sms?turnstile=${turnstileToken}`,
+          { phone: inputs.phone, verification_code: inputs.phone_sms_code },
+        );
+        const { success, message, data } = res.data;
+        if (success) {
+          if (data && data.require_2fa) {
+            setShowTwoFA(true);
+            setLoginLoading(false);
+            return;
           }
+          userDispatch({ type: 'login', payload: data });
+          setUserData(data);
+          updateAPI();
+          showSuccess('登录成功！');
           navigate('/console');
         } else {
           showError(message);
         }
       } else {
-        showError('请输入用户名和密码！');
+        // 账号密码登录（默认）
+        if (username && password) {
+          const res = await API.post(
+            `/api/user/login?turnstile=${turnstileToken}`,
+            {
+              username,
+              password,
+            },
+          );
+          const { success, message, data } = res.data;
+          if (success) {
+            // 检查是否需要2FA验证
+            if (data && data.require_2fa) {
+              setShowTwoFA(true);
+              setLoginLoading(false);
+              return;
+            }
+
+            userDispatch({ type: 'login', payload: data });
+            setUserData(data);
+            updateAPI();
+            showSuccess('登录成功！');
+            if (username === 'root' && password === '123456') {
+              Modal.error({
+                title: '您正在使用默认密码！',
+                content: '请立刻修改默认密码！',
+                centered: true,
+              });
+            }
+            navigate('/console');
+          } else {
+            showError(message);
+          }
+        } else {
+          showError('请输入用户名和密码！');
+        }
       }
     } catch (error) {
       showError('登录失败，请重试');
@@ -497,7 +600,7 @@ const LoginForm = () => {
   // 返回登录页面
   const handleBackToLogin = () => {
     setShowTwoFA(false);
-    setInputs({ username: '', password: '', wechat_verification_code: '' });
+    setInputs({ username: '', password: '', phone: '', phone_password: '', phone_sms_code: '', wechat_verification_code: '' });
   };
 
   const renderOAuthOptions = () => {
@@ -745,24 +848,111 @@ const LoginForm = () => {
                 </Button>
               )}
               <Form className='space-y-3'>
-                <Form.Input
-                  field='username'
-                  label={t('用户名或邮箱')}
-                  placeholder={t('请输入您的用户名或邮箱地址')}
-                  name='username'
-                  onChange={(value) => handleChange('username', value)}
-                  prefix={<IconMail />}
-                />
+                {/* 登录方式切换 */}
+                {(status.sms_login) && (
+                  <div className='flex rounded-full border border-gray-200 overflow-hidden mb-2'>
+                    <button
+                      type='button'
+                      className={`flex-1 py-2 text-sm transition-colors ${loginMode === 'password' ? 'bg-black text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                      onClick={() => setLoginMode('password')}
+                    >
+                      {t('账号密码')}
+                    </button>
+                    <button
+                      type='button'
+                      className={`flex-1 py-2 text-sm transition-colors ${loginMode === 'phone_password' ? 'bg-black text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                      onClick={() => setLoginMode('phone_password')}
+                    >
+                      {t('手机号密码')}
+                    </button>
+                    <button
+                      type='button'
+                      className={`flex-1 py-2 text-sm transition-colors ${loginMode === 'phone_sms' ? 'bg-black text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                      onClick={() => setLoginMode('phone_sms')}
+                    >
+                      {t('短信验证码')}
+                    </button>
+                  </div>
+                )}
 
-                <Form.Input
-                  field='password'
-                  label={t('密码')}
-                  placeholder={t('请输入您的密码')}
-                  name='password'
-                  mode='password'
-                  onChange={(value) => handleChange('password', value)}
-                  prefix={<IconLock />}
-                />
+                {/* 账号密码登录 */}
+                {loginMode === 'password' && (
+                  <>
+                    <Form.Input
+                      field='username'
+                      label={t('用户名或邮箱')}
+                      placeholder={t('请输入您的用户名或邮箱地址')}
+                      name='username'
+                      onChange={(value) => handleChange('username', value)}
+                      prefix={<IconMail />}
+                    />
+                    <Form.Input
+                      field='password'
+                      label={t('密码')}
+                      placeholder={t('请输入您的密码')}
+                      name='password'
+                      mode='password'
+                      onChange={(value) => handleChange('password', value)}
+                      prefix={<IconLock />}
+                    />
+                  </>
+                )}
+
+                {/* 手机号 + 密码登录 */}
+                {loginMode === 'phone_password' && (
+                  <>
+                    <Form.Input
+                      field='phone'
+                      label={t('手机号')}
+                      placeholder={t('请输入手机号')}
+                      name='phone'
+                      onChange={(value) => handleChange('phone', value)}
+                      prefix={<IconPhone />}
+                    />
+                    <Form.Input
+                      field='phone_password'
+                      label={t('登录密码')}
+                      placeholder={t('请输入登录密码')}
+                      name='phone_password'
+                      mode='password'
+                      onChange={(value) => handleChange('phone_password', value)}
+                      prefix={<IconLock />}
+                    />
+                  </>
+                )}
+
+                {/* 手机号 + 短信验证码登录 */}
+                {loginMode === 'phone_sms' && (
+                  <>
+                    <Form.Input
+                      field='phone'
+                      label={t('手机号')}
+                      placeholder={t('请输入手机号')}
+                      name='phone'
+                      onChange={(value) => handleChange('phone', value)}
+                      prefix={<IconPhone />}
+                      suffix={
+                        <Button
+                          onClick={sendLoginSMSCode}
+                          loading={smsCodeLoading}
+                          disabled={smsDisableButton || smsCodeLoading}
+                        >
+                          {smsDisableButton
+                            ? `${t('重新发送')} (${smsCountdown})`
+                            : t('获取验证码')}
+                        </Button>
+                      }
+                    />
+                    <Form.Input
+                      field='phone_sms_code'
+                      label={t('短信验证码')}
+                      placeholder={t('请输入短信验证码')}
+                      name='phone_sms_code'
+                      onChange={(value) => handleChange('phone_sms_code', value)}
+                      prefix={<IconKey />}
+                    />
+                  </>
+                )}
 
                 {(hasUserAgreement || hasPrivacyPolicy) && (
                   <div className='pt-4'>
@@ -817,15 +1007,17 @@ const LoginForm = () => {
                     {t('继续')}
                   </Button>
 
-                  <Button
-                    theme='borderless'
-                    type='tertiary'
-                    className='w-full !rounded-full'
-                    onClick={handleResetPasswordClick}
-                    loading={resetPasswordLoading}
-                  >
-                    {t('忘记密码？')}
-                  </Button>
+                  {loginMode === 'password' && (
+                    <Button
+                      theme='borderless'
+                      type='tertiary'
+                      className='w-full !rounded-full'
+                      onClick={handleResetPasswordClick}
+                      loading={resetPasswordLoading}
+                    >
+                      {t('忘记密码？')}
+                    </Button>
+                  )}
                 </div>
               </Form>
 

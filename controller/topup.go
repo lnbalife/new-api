@@ -304,6 +304,14 @@ func EpayNotify(c *gin.Context) {
 				log.Printf("易支付回调更新用户失败: %v", topUp)
 				return
 			}
+
+			// 处理邀请佣金（新版本：按实际支付金额计算）
+			err = model.ProcessCommission(model.DB, topUp, topUp.Money)
+			if err != nil {
+				common.SysError("process commission failed: " + err.Error())
+				// 佣金处理失败不影响充值，只记录错误
+			}
+
 			log.Printf("易支付回调更新用户成功 %v", topUp)
 			model.RecordLog(topUp.UserId, model.LogTypeTopup, fmt.Sprintf("使用在线充值成功，充值金额: %v，支付金额：%f", logger.LogQuota(quotaToAdd), topUp.Money))
 		}

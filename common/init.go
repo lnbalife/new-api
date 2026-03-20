@@ -93,6 +93,9 @@ func InitEnv() {
 		}
 	}
 
+	SystemName = GetEnvOrDefaultString("APP_NAME", "ApiRoute")
+	AppBaseUrl = GetEnvOrDefaultString("APP_BASE_URL", "https://apiroute.cn")
+
 	// Parse requestInterval and set RequestInterval
 	requestInterval, _ = strconv.Atoi(os.Getenv("POLLING_INTERVAL"))
 	RequestInterval = time.Duration(requestInterval) * time.Second

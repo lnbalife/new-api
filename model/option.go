@@ -62,6 +62,13 @@ func InitOptionMap() {
 	common.OptionMap["SMTPAccount"] = ""
 	common.OptionMap["SMTPToken"] = ""
 	common.OptionMap["SMTPSSLEnabled"] = strconv.FormatBool(common.SMTPSSLEnabled)
+	// SMS settings
+	common.OptionMap["SMSVerificationEnabled"] = strconv.FormatBool(common.SMSVerificationEnabled)
+	common.OptionMap["SMSLoginEnabled"] = strconv.FormatBool(common.SMSLoginEnabled)
+	common.OptionMap["SMSGatewayHost"] = common.SMSGatewayHost
+	common.OptionMap["SMSGatewayPath"] = common.SMSGatewayPath
+	common.OptionMap["SMSAppCode"] = common.SMSAppCode
+	common.OptionMap["SMSTemplateId"] = common.SMSTemplateId
 	common.OptionMap["Notice"] = ""
 	common.OptionMap["About"] = ""
 	common.OptionMap["HomePageContent"] = ""
@@ -292,6 +299,10 @@ func updateOptionMap(key string, value string) (err error) {
 			setting.StopOnSensitiveEnabled = boolValue
 		case "SMTPSSLEnabled":
 			common.SMTPSSLEnabled = boolValue
+		case "SMSVerificationEnabled":
+			common.SMSVerificationEnabled = boolValue
+		case "SMSLoginEnabled":
+			common.SMSLoginEnabled = boolValue
 		case "WorkerAllowHttpImageRequestEnabled":
 			system_setting.WorkerAllowHttpImageRequestEnabled = boolValue
 		case "DefaultUseAutoGroup":
@@ -314,6 +325,14 @@ func updateOptionMap(key string, value string) (err error) {
 		common.SMTPFrom = value
 	case "SMTPToken":
 		common.SMTPToken = value
+	case "SMSGatewayHost":
+		common.SMSGatewayHost = value
+	case "SMSGatewayPath":
+		common.SMSGatewayPath = value
+	case "SMSAppCode":
+		common.SMSAppCode = value
+	case "SMSTemplateId":
+		common.SMSTemplateId = value
 	case "ServerAddress":
 		system_setting.ServerAddress = value
 	case "WorkerUrl":

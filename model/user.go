@@ -34,7 +34,9 @@ type User struct {
 	OidcId           string         `json:"oidc_id" gorm:"column:oidc_id;index"`
 	WeChatId         string         `json:"wechat_id" gorm:"column:wechat_id;index"`
 	TelegramId       string         `json:"telegram_id" gorm:"column:telegram_id;index"`
+	Phone            string         `json:"phone" gorm:"type:varchar(20);column:phone;index"`
 	VerificationCode string         `json:"verification_code" gorm:"-:all"`                                    // this field is only for Email verification, don't save it to database!
+	PhoneVerificationCode string    `json:"phone_verification_code" gorm:"-:all"`                              // this field is only for Phone/SMS verification, don't save it to database!
 	AccessToken      *string        `json:"access_token" gorm:"type:char(32);column:access_token;uniqueIndex"` // this token is for system management
 	Quota            int            `json:"quota" gorm:"type:int;default:0"`
 	UsedQuota        int            `json:"used_quota" gorm:"type:int;default:0;column:used_quota"` // used quota
@@ -50,6 +52,8 @@ type User struct {
 	Setting          string         `json:"setting" gorm:"type:text;column:setting"`
 	Remark           string         `json:"remark,omitempty" gorm:"type:varchar(255)" validate:"max=255"`
 	StripeCustomer   string         `json:"stripe_customer" gorm:"type:varchar(64);column:stripe_customer;index"`
+	IdentityLevelId  int            `json:"identity_level_id" gorm:"type:int;default:0;index"` // 身份等级ID
+	IdentityLevelName string        `json:"identity_level_name,omitempty" gorm:"-:all"` // 身份等级名称（不存数据库，查询时关联）
 }
 
 func (user *User) ToBaseUser() *UserBase {
@@ -219,6 +223,16 @@ func GetAllUsers(pageInfo *common.PageInfo) (users []*User, total int64, err err
 		return nil, 0, err
 	}
 
+	// 填充身份等级名称
+	for _, user := range users {
+		if user.IdentityLevelId > 0 {
+			var level IdentityLevel
+			if DB.Where("id = ?", user.IdentityLevelId).First(&level).Error == nil {
+				user.IdentityLevelName = level.Name
+			}
+		}
+	}
+
 	return users, total, nil
 }
 
@@ -284,6 +298,16 @@ func SearchUsers(keyword string, group string, startIdx int, num int) ([]*User, 
 	// 提交事务
 	if err = tx.Commit().Error; err != nil {
 		return nil, 0, err
+	}
+
+	// 填充身份等级名称
+	for _, user := range users {
+		if user.IdentityLevelId > 0 {
+			var level IdentityLevel
+			if DB.Where("id = ?", user.IdentityLevelId).First(&level).Error == nil {
+				user.IdentityLevelName = level.Name
+			}
+		}
 	}
 
 	return users, total, nil
@@ -388,6 +412,14 @@ func (user *User) Insert(inviterId int) error {
 	//user.SetAccessToken(common.GetUUID())
 	user.AffCode = common.GetRandomString(4)
 
+	// 设置默认身份等级
+	if user.IdentityLevelId == 0 {
+		var defaultLevel IdentityLevel
+		if err := DB.Where("is_default = ?", true).First(&defaultLevel).Error; err == nil {
+			user.IdentityLevelId = defaultLevel.Id
+		}
+	}
+
 	// 初始化用户设置，包括默认的边栏配置
 	if user.Setting == "" {
 		defaultSetting := dto.UserSetting{}
@@ -445,6 +477,14 @@ func (user *User) InsertWithTx(tx *gorm.DB, inviterId int) error {
 	}
 	user.Quota = common.QuotaForNewUser
 	user.AffCode = common.GetRandomString(4)
+
+	// 设置默认身份等级
+	if user.IdentityLevelId == 0 {
+		var defaultLevel IdentityLevel
+		if err := DB.Where("is_default = ?", true).First(&defaultLevel).Error; err == nil {
+			user.IdentityLevelId = defaultLevel.Id
+		}
+	}
 
 	// 初始化用户设置
 	if user.Setting == "" {
@@ -678,6 +718,40 @@ func (user *User) FillUserByTelegramId() error {
 
 func IsEmailAlreadyTaken(email string) bool {
 	return DB.Unscoped().Where("email = ?", email).Find(&User{}).RowsAffected == 1
+}
+
+func IsPhoneAlreadyTaken(phone string) bool {
+	return DB.Unscoped().Where("phone = ?", phone).Find(&User{}).RowsAffected == 1
+}
+
+// ValidatePhoneAndFill looks up a user by phone number and verifies password.
+func (user *User) ValidatePhoneAndFill() (err error) {
+	password := user.Password
+	phone := strings.TrimSpace(user.Phone)
+	if phone == "" || password == "" {
+		return errors.New("手机号或密码为空")
+	}
+	DB.Where("phone = ?", phone).First(user)
+	okay := common.ValidatePasswordAndHash(password, user.Password)
+	if !okay || user.Status != common.UserStatusEnabled {
+		return errors.New("手机号或密码错误，或用户已被封禁")
+	}
+	return nil
+}
+
+// FillUserByPhone fills user info by phone number.
+func (user *User) FillUserByPhone() error {
+	if user.Phone == "" {
+		return errors.New("手机号为空")
+	}
+	result := DB.Where("phone = ?", user.Phone).First(user)
+	if result.RowsAffected == 0 {
+		return errors.New("该手机号未注册")
+	}
+	if user.Status != common.UserStatusEnabled {
+		return errors.New("用户已被封禁")
+	}
+	return nil
 }
 
 func IsWeChatIdAlreadyTaken(wechatId string) bool {

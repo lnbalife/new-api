@@ -49,7 +49,7 @@ func main() {
 		return
 	}
 
-	common.SysLog("NodeKey " + common.Version + " started")
+	common.SysLog(common.SystemName + " " + common.Version + " started")
 	if os.Getenv("GIN_MODE") != "debug" {
 		gin.SetMode(gin.ReleaseMode)
 	}

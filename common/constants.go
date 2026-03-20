@@ -12,10 +12,11 @@ import (
 
 var StartTime = time.Now().Unix() // unit: second
 var Version = "v0.0.0"            // this hard coding will be replaced automatically when building, no need to manually change
-var SystemName = "NodeKey"
+var SystemName = "ApiRoute"
 var Footer = ""
 var Logo = ""
 var TopUpLink = ""
+var AppBaseUrl = ""
 
 // var ChatLink = ""
 // var ChatLink2 = ""
@@ -83,6 +84,14 @@ var SMTPSSLEnabled = false
 var SMTPAccount = ""
 var SMTPFrom = ""
 var SMTPToken = ""
+
+// SMS gateway settings (AliCloud Market SMS API)
+var SMSVerificationEnabled = false // 通过密码注册时需要进行手机号验证
+var SMSLoginEnabled = false        // 允许手机号+短信验证码登录
+var SMSGatewayHost = "https://dfsmsv2.market.alicloudapi.com"
+var SMSGatewayPath = "/data/send_sms_v2"
+var SMSAppCode = ""
+var SMSTemplateId = "TPL_0000"
 
 var GitHubClientId = ""
 var GitHubClientSecret = ""

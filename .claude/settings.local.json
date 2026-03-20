@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go build:*)",
+      "Bash(ls -lh f:/go_project/nodekey_cc/web/dist/assets/*.js)",
+      "Bash(grep -r \"commission_enabled\\\\|CommissionCard\" f:/go_project/nodekey_cc/web/dist/assets/*.js)",
+      "Bash(grep -A 3 \"API.get.*commission\\\\|API.get.*topup\" f:/go_project/nodekey_cc/web/src/components/topup/*.jsx)",
+      "Bash(\"/f/go_project/nodekey_cc/web/src/i18n/locales/en.json\":*)",
+      "Bash(python3 -m json.tool \"/f/go_project/nodekey_cc/web/src/i18n/locales/en.json\")",
+      "Bash(python3 -c \"import json; json.load\\(open\\(''''/f/go_project/nodekey_cc/web/src/i18n/locales/en.json''''\\)\\)\")",
+      "Bash(npm run:*)",
+      "Bash(node -e \"require\\(''/f/go_project/nodekey_cc/web/src/i18n/locales/en.json''\\); console.log\\(''JSON is valid''\\)\")",
+      "Bash(node -e \"require\\(''F:/go_project/nodekey_cc/web/src/i18n/locales/en.json''\\); console.log\\(''JSON is valid''\\)\")",
+      "Bash(xargs grep:*)",
+      "Bash(ls -la f:/go_project/nodekey_cc/*.md)",
+      "Bash(ls -la f:/go_project/nodekey_cc/model/commission*.go)",
+      "Bash(ls -la f:/go_project/nodekey_cc/controller/commission*.go)",
+      "Bash(ls \"f:\\\\go_project\\\\nodekey_cc\\\\web\\\\node_modules\\\\@douyinfe\\\\semi-icons\\\\lib\\\\cjs\\\\icons | grep -i phone\")",
+      "Bash(mobile)",
+      "Bash(call)",
+      "Bash(smart)",
+      "Bash(find f:go_projectnodekey_ccwebnode_modules@douyinfesemi-iconslibcjsicons -name *hone* -o -name *obile*)"
+    ]
+  }
+}

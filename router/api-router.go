@@ -32,6 +32,7 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/home_page_content", controller.GetHomePageContent)
 		apiRouter.GET("/pricing", middleware.TryUserAuth(), controller.GetPricing)
 		apiRouter.GET("/verification", middleware.EmailVerificationRateLimit(), middleware.TurnstileCheck(), controller.SendEmailVerification)
+		apiRouter.GET("/sms_verification", middleware.SMSVerificationRateLimit(), middleware.TurnstileCheck(), controller.SendSMSVerification)
 		apiRouter.GET("/reset_password", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.SendPasswordResetEmail)
 		apiRouter.POST("/user/reset", middleware.CriticalRateLimit(), controller.ResetPassword)
 		// OAuth routes - specific routes must come before :provider wildcard
@@ -56,6 +57,8 @@ func SetApiRouter(router *gin.Engine) {
 		{
 			userRoute.POST("/register", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.Register)
 			userRoute.POST("/login", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.Login)
+			userRoute.POST("/login/phone", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.PhonePasswordLogin)
+			userRoute.POST("/login/sms", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.PhoneSMSLogin)
 			userRoute.POST("/login/2fa", middleware.CriticalRateLimit(), controller.Verify2FALogin)
 			userRoute.POST("/passkey/login/begin", middleware.CriticalRateLimit(), controller.PasskeyLoginBegin)
 			userRoute.POST("/passkey/login/finish", middleware.CriticalRateLimit(), controller.PasskeyLoginFinish)
@@ -90,6 +93,16 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/stripe/amount", controller.RequestStripeAmount)
 				selfRoute.POST("/creem/pay", middleware.CriticalRateLimit(), controller.RequestCreemPay)
 				selfRoute.POST("/aff_transfer", controller.TransferAffQuota)
+
+				// 新版佣金系统
+				selfRoute.GET("/wallet", controller.GetCommissionWallet)
+				selfRoute.GET("/commission/records", controller.GetCommissionRecords)
+				selfRoute.GET("/withdrawal/records", controller.GetWithdrawalRecords)
+				selfRoute.POST("/withdrawal", controller.CreateWithdrawal)
+				selfRoute.GET("/withdrawal/setting", controller.GetWithdrawalSetting)
+				selfRoute.GET("/kyc/status", controller.GetKYCStatus)
+				selfRoute.POST("/kyc/submit", controller.SubmitKYC)
+
 				selfRoute.PUT("/setting", controller.UpdateUserSetting)
 
 				// 2FA routes
@@ -124,6 +137,7 @@ func SetApiRouter(router *gin.Engine) {
 				adminRoute.PUT("/", controller.UpdateUser)
 				adminRoute.DELETE("/:id", controller.DeleteUser)
 				adminRoute.DELETE("/:id/reset_passkey", controller.AdminResetPasskey)
+				adminRoute.PUT("/:id/identity", controller.SetUserIdentity)
 
 				// Admin 2FA routes
 				adminRoute.GET("/2fa/stats", controller.Admin2FAStats)
@@ -156,6 +170,27 @@ func SetApiRouter(router *gin.Engine) {
 			subscriptionAdminRoute.POST("/users/:id/subscriptions", controller.AdminCreateUserSubscription)
 			subscriptionAdminRoute.POST("/user_subscriptions/:id/invalidate", controller.AdminInvalidateUserSubscription)
 			subscriptionAdminRoute.DELETE("/user_subscriptions/:id", controller.AdminDeleteUserSubscription)
+		}
+
+		// Commission system admin routes
+		commissionAdminRoute := apiRouter.Group("/commission/admin")
+		commissionAdminRoute.Use(middleware.AdminAuth())
+		{
+			// Identity level management
+			commissionAdminRoute.GET("/identity_levels", controller.GetIdentityLevels)
+			commissionAdminRoute.POST("/identity_levels", controller.CreateIdentityLevel)
+			commissionAdminRoute.PUT("/identity_levels/:id", controller.UpdateIdentityLevel)
+			commissionAdminRoute.DELETE("/identity_levels/:id", controller.DeleteIdentityLevel)
+
+			// User identity assignment
+			commissionAdminRoute.PUT("/users/:userId/identity", controller.SetUserIdentity)
+
+			// Withdrawal audit
+			commissionAdminRoute.GET("/withdrawals", controller.GetAllWithdrawals)
+			commissionAdminRoute.POST("/withdrawals/:id/audit", controller.AuditWithdrawal)
+
+			// Withdrawal settings
+			commissionAdminRoute.PUT("/withdrawal_setting", controller.UpdateWithdrawalSetting)
 		}
 
 		// Subscription payment callbacks (no auth)

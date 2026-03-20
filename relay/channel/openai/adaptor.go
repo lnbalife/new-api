@@ -225,8 +225,8 @@ func (a *Adaptor) SetupRequestHeader(c *gin.Context, header *http.Header, info *
 		}
 	}
 	if info.ChannelType == constant.ChannelTypeOpenRouter {
-		header.Set("HTTP-Referer", "https://nodekey.biandianyun.com")
-		header.Set("X-Title", "NodeKey")
+		header.Set("HTTP-Referer", common.AppBaseUrl)
+		header.Set("X-Title", common.SystemName)
 	}
 	return nil
 }

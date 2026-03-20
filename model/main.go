@@ -266,6 +266,12 @@ func migrateDB() error {
 		&Log{},
 		&Midjourney{},
 		&TopUp{},
+		&IdentityLevel{},
+		&CommissionWallet{},
+		&CommissionRecord{},
+		&WithdrawalRecord{},
+		&UserKYC{},
+		&WithdrawalSetting{},
 		&QuotaData{},
 		&Task{},
 		&Model{},
@@ -284,6 +290,15 @@ func migrateDB() error {
 	if err != nil {
 		return err
 	}
+
+	// 初始化默认身份等级和提现设置
+	if err := InitDefaultIdentityLevel(); err != nil {
+		common.SysError("init default identity level failed: " + err.Error())
+	}
+	if err := InitDefaultWithdrawalSetting(); err != nil {
+		common.SysError("init default withdrawal setting failed: " + err.Error())
+	}
+
 	if common.UsingSQLite {
 		if err := ensureSubscriptionPlanTableSQLite(); err != nil {
 			return err

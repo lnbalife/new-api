@@ -51,6 +51,8 @@ func GetStatus(c *gin.Context) {
 		"version":                     common.Version,
 		"start_time":                  common.StartTime,
 		"email_verification":          common.EmailVerificationEnabled,
+		"sms_verification":            common.SMSVerificationEnabled,
+		"sms_login":                   common.SMSLoginEnabled,
 		"github_oauth":                common.GitHubOAuthEnabled,
 		"github_client_id":            common.GitHubClientId,
 		"discord_oauth":               system_setting.GetDiscordSettings().Enabled,
@@ -368,6 +370,41 @@ func ResetPassword(c *gin.Context) {
 		"success": true,
 		"message": "",
 		"data":    password,
+	})
+	return
+}
+
+// SendSMSVerification sends an SMS verification code to the given phone number.
+// Used for registration (when SMSVerificationEnabled) and SMS login (when SMSLoginEnabled).
+func SendSMSVerification(c *gin.Context) {
+	phone := c.Query("phone")
+	if phone == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "手机号不能为空",
+		})
+		return
+	}
+	// Basic Chinese mobile phone validation (11 digits starting with 1)
+	if len(phone) != 11 {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "手机号格式不正确",
+		})
+		return
+	}
+
+	code := common.GeneratePhoneVerificationCode(4)
+	common.RegisterVerificationCodeWithKey(phone, code, common.SMSVerificationPurpose)
+
+	if err := common.SendSMS(phone, code); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
 	})
 	return
 }

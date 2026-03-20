@@ -1,6 +1,7 @@
 package common
 
 import (
+	"math/rand"
 	"strings"
 	"sync"
 	"time"
@@ -16,12 +17,23 @@ type verificationValue struct {
 const (
 	EmailVerificationPurpose = "v"
 	PasswordResetPurpose     = "r"
+	SMSVerificationPurpose   = "s"
 )
 
 var verificationMutex sync.Mutex
 var verificationMap map[string]verificationValue
 var verificationMapMaxSize = 10
 var VerificationValidMinutes = 10
+
+func GeneratePhoneVerificationCode(length int) string {
+	var digits = "0123456789"
+	result := make([]byte, length)
+	for i := range result {
+		// 随机选择一个数字
+		result[i] = digits[rand.Intn(len(digits))]
+	}
+	return string(result)
+}
 
 func GenerateVerificationCode(length int) string {
 	code := uuid.New().String()

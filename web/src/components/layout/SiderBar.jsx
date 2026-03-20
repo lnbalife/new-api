@@ -48,7 +48,9 @@ const routerMap = {
   models: '/console/models',
   deployment: '/console/deployment',
   playground: '/console/playground',
-  personal: '/console/personal',
+  wallet: '/console/wallet',
+  identityLevel: '/console/identity-level',
+  withdrawalAudit: '/console/withdrawal-audit',
 };
 
 const SiderBar = ({ onNavigate = () => {} }) => {
@@ -130,6 +132,11 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         to: '/topup',
       },
       {
+        text: t('佣金钱包'),
+        itemKey: 'wallet',
+        to: '/wallet',
+      },
+      {
         text: t('个人设置'),
         itemKey: 'personal',
         to: '/personal',
@@ -181,6 +188,18 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         text: t('用户管理'),
         itemKey: 'user',
         to: '/user',
+        className: isAdmin() ? '' : 'tableHiddle',
+      },
+      {
+        text: t('身份等级管理'),
+        itemKey: 'identityLevel',
+        to: '/identity-level',
+        className: isAdmin() ? '' : 'tableHiddle',
+      },
+      {
+        text: t('提现审核'),
+        itemKey: 'withdrawalAudit',
+        to: '/withdrawal-audit',
         className: isAdmin() ? '' : 'tableHiddle',
       },
       {

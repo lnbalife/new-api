@@ -117,7 +117,7 @@ func testChannel(channel *model.Channel, testModel string, endpointType string, 
 		}
 
 		// VolcEngine 图像生成模型
-		if channel.Type == constant.ChannelTypeVolcEngine && strings.Contains(testModel, "seedream") {
+		if channel.Type == constant.ChannelTypeVolcEngine && strings.Contains(strings.ToLower(testModel), "seedream") {
 			requestPath = "/v1/images/generations"
 		}
 
@@ -127,7 +127,7 @@ func testChannel(channel *model.Channel, testModel string, endpointType string, 
 		}
 
 		// responses compaction models (must use /v1/responses/compact)
-		if strings.HasSuffix(testModel, ratio_setting.CompactModelSuffix) {
+		if strings.HasSuffix(strings.ToLower(testModel), ratio_setting.CompactModelSuffix) {
 			requestPath = "/v1/responses/compact"
 		}
 	}
@@ -196,24 +196,30 @@ func testChannel(channel *model.Channel, testModel string, endpointType string, 
 		relayFormat = types.RelayFormatOpenAI
 		if c.Request.URL.Path == "/v1/embeddings" {
 			relayFormat = types.RelayFormatEmbedding
+			endpointType = string(constant.EndpointTypeEmbeddings)
 		}
 		if c.Request.URL.Path == "/v1/images/generations" {
 			relayFormat = types.RelayFormatOpenAIImage
+			endpointType = string(constant.EndpointTypeImageGeneration)
 		}
 		if c.Request.URL.Path == "/v1/messages" {
 			relayFormat = types.RelayFormatClaude
+			endpointType = string(constant.EndpointTypeAnthropic)
 		}
 		if strings.Contains(c.Request.URL.Path, "/v1beta/models") {
 			relayFormat = types.RelayFormatGemini
 		}
 		if c.Request.URL.Path == "/v1/rerank" || c.Request.URL.Path == "/rerank" {
 			relayFormat = types.RelayFormatRerank
+			endpointType = string(constant.EndpointTypeJinaRerank)
 		}
 		if c.Request.URL.Path == "/v1/responses" {
 			relayFormat = types.RelayFormatOpenAIResponses
+			endpointType = string(constant.EndpointTypeOpenAIResponse)
 		}
 		if strings.HasPrefix(c.Request.URL.Path, "/v1/responses/compact") {
 			relayFormat = types.RelayFormatOpenAIResponsesCompaction
+			endpointType = string(constant.EndpointTypeOpenAIResponseCompact)
 		}
 	}
 
@@ -616,7 +622,8 @@ func buildTestRequest(model string, endpointType string, channel *model.Channel,
 				Model:  model,
 				Prompt: "a cute cat",
 				N:      lo.ToPtr(uint(1)),
-				Size:   "1024x1024",
+				// Size:   "1024x1024",
+				Size:   "1920x1920",
 			}
 		case constant.EndpointTypeJinaRerank:
 			// 返回 RerankRequest

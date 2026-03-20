@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"unicode"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/dto"
@@ -27,6 +28,47 @@ import (
 type LoginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+}
+
+// PhonePasswordLoginRequest is for phone + password login
+type PhonePasswordLoginRequest struct {
+	Phone    string `json:"phone"`
+	Password string `json:"password"`
+}
+
+// PhoneSMSLoginRequest is for phone + SMS verification code login
+type PhoneSMSLoginRequest struct {
+	Phone            string `json:"phone"`
+	VerificationCode string `json:"verification_code"`
+}
+
+// validatePasswordStrength checks that the password is at least 8 chars and
+// contains at least one uppercase letter, one lowercase letter, and one special symbol.
+func validatePasswordStrength(password string) error {
+	if len(password) < 8 {
+		return errors.New("密码不得少于 8 位")
+	}
+	var hasUpper, hasLower, hasSpecial bool
+	for _, r := range password {
+		switch {
+		case unicode.IsUpper(r):
+			hasUpper = true
+		case unicode.IsLower(r):
+			hasLower = true
+		case !unicode.IsLetter(r) && !unicode.IsDigit(r):
+			hasSpecial = true
+		}
+	}
+	if !hasUpper {
+		return errors.New("密码需包含至少一个大写字母")
+	}
+	if !hasLower {
+		return errors.New("密码需包含至少一个小写字母")
+	}
+	if !hasSpecial {
+		return errors.New("密码需包含至少一个特殊符号")
+	}
+	return nil
 }
 
 func Login(c *gin.Context) {
@@ -71,6 +113,119 @@ func Login(c *gin.Context) {
 			return
 		}
 
+		c.JSON(http.StatusOK, gin.H{
+			"message": i18n.T(c, i18n.MsgUserRequire2FA),
+			"success": true,
+			"data": map[string]interface{}{
+				"require_2fa": true,
+			},
+		})
+		return
+	}
+
+	setupLogin(&user, c)
+}
+
+// PhonePasswordLogin handles login by phone number + password
+func PhonePasswordLogin(c *gin.Context) {
+	if !common.PasswordLoginEnabled {
+		common.ApiErrorI18n(c, i18n.MsgUserPasswordLoginDisabled)
+		return
+	}
+	var req PhonePasswordLoginRequest
+	err := json.NewDecoder(c.Request.Body).Decode(&req)
+	if err != nil {
+		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		return
+	}
+	if req.Phone == "" || req.Password == "" {
+		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		return
+	}
+	user := model.User{
+		Phone:    req.Phone,
+		Password: req.Password,
+	}
+	err = user.ValidatePhoneAndFill()
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"message": err.Error(),
+			"success": false,
+		})
+		return
+	}
+
+	// 检查是否启用2FA
+	if model.IsTwoFAEnabled(user.Id) {
+		session := sessions.Default(c)
+		session.Set("pending_username", user.Username)
+		session.Set("pending_user_id", user.Id)
+		err := session.Save()
+		if err != nil {
+			common.ApiErrorI18n(c, i18n.MsgUserSessionSaveFailed)
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"message": i18n.T(c, i18n.MsgUserRequire2FA),
+			"success": true,
+			"data": map[string]interface{}{
+				"require_2fa": true,
+			},
+		})
+		return
+	}
+
+	setupLogin(&user, c)
+}
+
+// PhoneSMSLogin handles login by phone number + SMS verification code
+func PhoneSMSLogin(c *gin.Context) {
+	if !common.SMSLoginEnabled {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "短信验证码登录未启用",
+		})
+		return
+	}
+	var req PhoneSMSLoginRequest
+	err := json.NewDecoder(c.Request.Body).Decode(&req)
+	if err != nil {
+		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		return
+	}
+	if req.Phone == "" || req.VerificationCode == "" {
+		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		return
+	}
+	if !common.VerifyCodeWithKey(req.Phone, req.VerificationCode, common.SMSVerificationPurpose) {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "验证码错误或已过期",
+		})
+		return
+	}
+	// Delete used code
+	common.DeleteKey(req.Phone, common.SMSVerificationPurpose)
+
+	user := model.User{Phone: req.Phone}
+	if err := user.FillUserByPhone(); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	// 检查是否启用2FA
+	if model.IsTwoFAEnabled(user.Id) {
+		session := sessions.Default(c)
+		session.Set("pending_username", user.Username)
+		session.Set("pending_user_id", user.Id)
+		err := session.Save()
+		if err != nil {
+			common.ApiErrorI18n(c, i18n.MsgUserSessionSaveFailed)
+			return
+		}
 		c.JSON(http.StatusOK, gin.H{
 			"message": i18n.T(c, i18n.MsgUserRequire2FA),
 			"success": true,
@@ -147,6 +302,16 @@ func Register(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgUserInputInvalid, map[string]any{"Error": err.Error()})
 		return
 	}
+
+	// 密码强度校验：不少于8位、包含大写字母、小写字母、特殊符号
+	if err := validatePasswordStrength(user.Password); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
 	if common.EmailVerificationEnabled {
 		if user.Email == "" || user.VerificationCode == "" {
 			common.ApiErrorI18n(c, i18n.MsgUserEmailVerificationRequired)
@@ -157,6 +322,35 @@ func Register(c *gin.Context) {
 			return
 		}
 	}
+
+	// SMS手机号验证（当启用时）
+	if common.SMSVerificationEnabled {
+		if user.Phone == "" || user.PhoneVerificationCode == "" {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "手机号和短信验证码不能为空",
+			})
+			return
+		}
+		if !common.VerifyCodeWithKey(user.Phone, user.PhoneVerificationCode, common.SMSVerificationPurpose) {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "短信验证码错误或已过期",
+			})
+			return
+		}
+		// 检查手机号是否已被占用
+		if model.IsPhoneAlreadyTaken(user.Phone) {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "该手机号已被注册",
+			})
+			return
+		}
+		// 验证成功后删除验证码
+		common.DeleteKey(user.Phone, common.SMSVerificationPurpose)
+	}
+
 	exist, err := model.CheckUserExistOrDeleted(user.Username, user.Email)
 	if err != nil {
 		common.ApiErrorI18n(c, i18n.MsgDatabaseError)
@@ -178,6 +372,9 @@ func Register(c *gin.Context) {
 	}
 	if common.EmailVerificationEnabled {
 		cleanUser.Email = user.Email
+	}
+	if common.SMSVerificationEnabled && user.Phone != "" {
+		cleanUser.Phone = user.Phone
 	}
 	if err := cleanUser.Insert(inviterId); err != nil {
 		common.ApiError(c, err)

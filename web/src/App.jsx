@@ -49,6 +49,9 @@ import OAuth2Callback from './components/auth/OAuth2Callback';
 import PersonalSetting from './components/settings/PersonalSetting';
 import Setup from './pages/Setup';
 import SetupCheck from './components/layout/SetupCheck';
+import Wallet from './pages/Wallet';
+import IdentityLevel from './pages/IdentityLevel';
+import WithdrawalAudit from './pages/WithdrawalAudit';
 
 const Home = lazy(() => import('./pages/Home'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -172,6 +175,22 @@ function App() {
           }
         />
         <Route
+          path='/console/identity-level'
+          element={
+            <AdminRoute>
+              <IdentityLevel />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path='/console/withdrawal-audit'
+          element={
+            <AdminRoute>
+              <WithdrawalAudit />
+            </AdminRoute>
+          }
+        />
+        <Route
           path='/user/reset'
           element={
             <Suspense fallback={<Loading></Loading>} key={location.pathname}>
@@ -273,6 +292,16 @@ function App() {
             <PrivateRoute>
               <Suspense fallback={<Loading></Loading>} key={location.pathname}>
                 <TopUp />
+              </Suspense>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path='/console/wallet'
+          element={
+            <PrivateRoute>
+              <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+                <Wallet />
               </Suspense>
             </PrivateRoute>
           }

@@ -50,6 +50,7 @@ import {
   IconUser,
   IconLock,
   IconKey,
+  IconPhone,
 } from '@douyinfe/semi-icons';
 import {
   onGitHubOAuthClicked,
@@ -79,6 +80,8 @@ const RegisterForm = () => {
     password2: '',
     email: '',
     verification_code: '',
+    phone: '',
+    phone_verification_code: '',
     wechat_verification_code: '',
   });
   const { username, password, password2 } = inputs;
@@ -97,6 +100,9 @@ const RegisterForm = () => {
   const [emailRegisterLoading, setEmailRegisterLoading] = useState(false);
   const [registerLoading, setRegisterLoading] = useState(false);
   const [verificationCodeLoading, setVerificationCodeLoading] = useState(false);
+  const [smsCodeLoading, setSmsCodeLoading] = useState(false);
+  const [smsDisableButton, setSmsDisableButton] = useState(false);
+  const [smsCountdown, setSmsCountdown] = useState(60);
   const [otherRegisterOptionsLoading, setOtherRegisterOptionsLoading] =
     useState(false);
   const [wechatCodeSubmitLoading, setWechatCodeSubmitLoading] = useState(false);
@@ -142,9 +148,11 @@ const RegisterForm = () => {
   );
 
   const [showEmailVerification, setShowEmailVerification] = useState(false);
+  const [showSMSVerification, setShowSMSVerification] = useState(false);
 
   useEffect(() => {
     setShowEmailVerification(!!status?.email_verification);
+    setShowSMSVerification(!!status?.sms_verification);
     if (status?.turnstile_check) {
       setTurnstileEnabled(true);
       setTurnstileSiteKey(status.turnstile_site_key);
@@ -167,6 +175,19 @@ const RegisterForm = () => {
     }
     return () => clearInterval(countdownInterval); // Clean up on unmount
   }, [disableButton, countdown]);
+
+  useEffect(() => {
+    let interval = null;
+    if (smsDisableButton && smsCountdown > 0) {
+      interval = setInterval(() => {
+        setSmsCountdown((c) => c - 1);
+      }, 1000);
+    } else if (smsCountdown === 0) {
+      setSmsDisableButton(false);
+      setSmsCountdown(60);
+    }
+    return () => clearInterval(interval);
+  }, [smsDisableButton, smsCountdown]);
 
   useEffect(() => {
     return () => {
@@ -218,6 +239,19 @@ const RegisterForm = () => {
   async function handleSubmit(e) {
     if (password.length < 8) {
       showInfo('密码长度不得小于 8 位！');
+      return;
+    }
+    // 密码强度校验
+    if (!/[A-Z]/.test(password)) {
+      showInfo('密码需包含至少一个大写字母');
+      return;
+    }
+    if (!/[a-z]/.test(password)) {
+      showInfo('密码需包含至少一个小写字母');
+      return;
+    }
+    if (!/[^A-Za-z0-9]/.test(password)) {
+      showInfo('密码需包含至少一个特殊符号');
       return;
     }
     if (password !== password2) {
@@ -276,6 +310,34 @@ const RegisterForm = () => {
       showError('发送验证码失败，请重试');
     } finally {
       setVerificationCodeLoading(false);
+    }
+  };
+
+  const sendSMSCode = async () => {
+    if (inputs.phone === '') {
+      showInfo('请先输入手机号');
+      return;
+    }
+    if (turnstileEnabled && turnstileToken === '') {
+      showInfo('请稍后几秒重试，Turnstile 正在检查用户环境！');
+      return;
+    }
+    setSmsCodeLoading(true);
+    try {
+      const res = await API.get(
+        `/api/sms_verification?phone=${encodeURIComponent(inputs.phone)}&turnstile=${turnstileToken}`,
+      );
+      const { success, message } = res.data;
+      if (success) {
+        showSuccess('短信验证码已发送，请注意查收！');
+        setSmsDisableButton(true);
+      } else {
+        showError(message);
+      }
+    } catch (error) {
+      showError('发送短信验证码失败，请重试');
+    } finally {
+      setSmsCodeLoading(false);
     }
   };
 
@@ -585,7 +647,7 @@ const RegisterForm = () => {
                 <Form.Input
                   field='password'
                   label={t('密码')}
-                  placeholder={t('输入密码，最短 8 位，最长 20 位')}
+                  placeholder={t('至少8位，需含大写字母、小写字母、特殊符号')}
                   name='password'
                   mode='password'
                   onChange={(value) => handleChange('password', value)}
@@ -631,6 +693,40 @@ const RegisterForm = () => {
                       name='verification_code'
                       onChange={(value) =>
                         handleChange('verification_code', value)
+                      }
+                      prefix={<IconKey />}
+                    />
+                  </>
+                )}
+
+                {showSMSVerification && (
+                  <>
+                    <Form.Input
+                      field='phone'
+                      label={t('手机号')}
+                      placeholder={t('请输入手机号')}
+                      name='phone'
+                      onChange={(value) => handleChange('phone', value)}
+                      prefix={<IconPhone />}
+                      suffix={
+                        <Button
+                          onClick={sendSMSCode}
+                          loading={smsCodeLoading}
+                          disabled={smsDisableButton || smsCodeLoading}
+                        >
+                          {smsDisableButton
+                            ? `${t('重新发送')} (${smsCountdown})`
+                            : t('获取验证码')}
+                        </Button>
+                      }
+                    />
+                    <Form.Input
+                      field='phone_verification_code'
+                      label={t('短信验证码')}
+                      placeholder={t('输入短信验证码')}
+                      name='phone_verification_code'
+                      onChange={(value) =>
+                        handleChange('phone_verification_code', value)
                       }
                       prefix={<IconKey />}
                     />

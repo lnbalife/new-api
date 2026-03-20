@@ -100,6 +100,12 @@ const SystemSetting = () => {
     LinuxDOClientSecret: '',
     LinuxDOMinimumTrustLevel: '',
     ServerAddress: '',
+    SMSVerificationEnabled: '',
+    SMSLoginEnabled: '',
+    SMSGatewayHost: 'https://dfsmsv2.market.alicloudapi.com',
+    SMSGatewayPath: '/data/send_sms_v2',
+    SMSAppCode: '',
+    SMSTemplateId: 'TPL_0000',
     // SSRF防护配置
     'fetch_setting.enable_ssrf_protection': true,
     'fetch_setting.allow_private_ip': '',
@@ -174,6 +180,8 @@ const SystemSetting = () => {
           case 'PasswordLoginEnabled':
           case 'PasswordRegisterEnabled':
           case 'EmailVerificationEnabled':
+          case 'SMSVerificationEnabled':
+          case 'SMSLoginEnabled':
           case 'GitHubOAuthEnabled':
           case 'WeChatAuthEnabled':
           case 'TelegramOAuthEnabled':
@@ -342,6 +350,19 @@ const SystemSetting = () => {
       options.push({ key: 'SMTPToken', value: inputs.SMTPToken });
     }
 
+    if (options.length > 0) {
+      await updateOptions(options);
+    }
+  };
+
+  const submitSMS = async () => {
+    const options = [];
+    const smsFields = ['SMSGatewayHost', 'SMSGatewayPath', 'SMSAppCode', 'SMSTemplateId'];
+    smsFields.forEach((key) => {
+      if (originInputs[key] !== inputs[key]) {
+        options.push({ key, value: inputs[key] });
+      }
+    });
     if (options.length > 0) {
       await updateOptions(options);
     }
@@ -1016,6 +1037,24 @@ const SystemSetting = () => {
                         {t('通过密码注册时需要进行邮箱验证')}
                       </Form.Checkbox>
                       <Form.Checkbox
+                        field='SMSVerificationEnabled'
+                        noLabel
+                        onChange={(e) =>
+                          handleCheckboxChange('SMSVerificationEnabled', e)
+                        }
+                      >
+                        {t('通过密码注册时需要进行手机号验证')}
+                      </Form.Checkbox>
+                      <Form.Checkbox
+                        field='SMSLoginEnabled'
+                        noLabel
+                        onChange={(e) =>
+                          handleCheckboxChange('SMSLoginEnabled', e)
+                        }
+                      >
+                        {t('允许手机号+短信验证码登录')}
+                      </Form.Checkbox>
+                      <Form.Checkbox
                         field='RegisterEnabled'
                         noLabel
                         onChange={(e) =>
@@ -1338,6 +1377,59 @@ const SystemSetting = () => {
                     </Col>
                   </Row>
                   <Button onClick={submitSMTP}>{t('保存 SMTP 设置')}</Button>
+                </Form.Section>
+              </Card>
+              <Card>
+                <Form.Section text={t('配置短信网关（SMS）')}>
+                  <Text>{t('用于手机号注册验证码及短信登录，基于阿里云市场短信API')}</Text>
+                  <Row
+                    gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }}
+                    style={{ marginTop: 16 }}
+                  >
+                    <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+                      <Form.Input
+                        field='SMSGatewayHost'
+                        label={t('短信网关 Host')}
+                        placeholder='https://dfsmsv2.market.alicloudapi.com'
+                        onChange={(value) =>
+                          setInputs({ ...inputs, SMSGatewayHost: value })
+                        }
+                      />
+                    </Col>
+                    <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+                      <Form.Input
+                        field='SMSGatewayPath'
+                        label={t('短信网关 Path')}
+                        placeholder='/data/send_sms_v2'
+                        onChange={(value) =>
+                          setInputs({ ...inputs, SMSGatewayPath: value })
+                        }
+                      />
+                    </Col>
+                    <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+                      <Form.Input
+                        field='SMSAppCode'
+                        label={t('AppCode')}
+                        placeholder={t('阿里云市场 AppCode')}
+                        onChange={(value) =>
+                          setInputs({ ...inputs, SMSAppCode: value })
+                        }
+                      />
+                    </Col>
+                    <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+                      <Form.Input
+                        field='SMSTemplateId'
+                        label={t('短信模板 ID')}
+                        placeholder='TPL_0000'
+                        onChange={(value) =>
+                          setInputs({ ...inputs, SMSTemplateId: value })
+                        }
+                      />
+                    </Col>
+                  </Row>
+                  <Button onClick={submitSMS} style={{ marginTop: 16 }}>
+                    {t('保存短信网关设置')}
+                  </Button>
                 </Form.Section>
               </Card>
               <Card>

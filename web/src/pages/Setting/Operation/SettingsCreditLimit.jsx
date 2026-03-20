@@ -167,6 +167,7 @@ export default function SettingsCreditLimit(props) {
                 />
               </Col>
             </Row>
+
             <Row>
               <Col>
                 <Form.Switch
